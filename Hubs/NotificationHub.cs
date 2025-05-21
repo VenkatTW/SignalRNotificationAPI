@@ -9,23 +9,23 @@ public class NotificationHub : Hub
   private static readonly ConcurrentDictionary<string, List<string>> UserConnections = new ConcurrentDictionary<string, List<string>>();
 
   // Method to get connection IDs for a specific user
-  public static IEnumerable<string> GetConnectionIdsForUser(string username)
+  public static IEnumerable<string> GetConnectionIdsForUser(string userId)
   {
-    if (string.IsNullOrEmpty(username) || !UserConnections.TryGetValue(username, out var connectionIds))
+    if (string.IsNullOrEmpty(userId) || !UserConnections.TryGetValue(userId, out var connectionIds))
       return new List<string>();
 
     return connectionIds;
   }
 
   // Method to register a user with their connection ID
-  public async Task RegisterUser(string username)
+  public async Task RegisterUser(string userId)
   {
-    if (string.IsNullOrEmpty(username))
+    if ( string.IsNullOrEmpty(userId))
       return;
 
     // Add the connection ID to the user's list of connections
     UserConnections.AddOrUpdate(
-      username,
+      userId,
       // If the key doesn't exist, create a new list with the current connection ID
       new List<string> { Context.ConnectionId },
       // If the key exists, add the current connection ID to the existing list
@@ -37,7 +37,7 @@ public class NotificationHub : Hub
       }
     );
 
-    await Clients.Caller.SendAsync("ReceiveNotification", username, $"Registered as {username}");
+    await Clients.Caller.SendAsync("ReceiveNotification", userId, $"Registered as {userId}");
   }
 
   // Method to send notification to a specific user
@@ -56,11 +56,12 @@ public class NotificationHub : Hub
     var httpContext = Context.GetHttpContext();
     if (httpContext != null)
     {
-      var username = httpContext.Request.Query["username"].ToString();
-      if (!string.IsNullOrEmpty(username))
+      var userId = httpContext.Request.Query["userId"].ToString();
+      if (!string.IsNullOrEmpty(userId))
       {
         // Register the user
-        await RegisterUser(username);
+        Console.WriteLine($"User {userId} connected with connection ID: {Context.ConnectionId}");
+        await RegisterUser(userId);
       }
     }
 

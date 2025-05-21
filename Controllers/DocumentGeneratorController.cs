@@ -16,18 +16,23 @@ public class DocumentGeneratorController : ControllerBase
 
   public class DocumentGenerationRequest
   {
+    public string UserId { get; set; }
+    public string TemplateId { get; set; }
     public string Username { get; set; }
   }
 
   [HttpPost("generate")]
   public IActionResult GenerateDocument([FromBody] DocumentGenerationRequest request)
   {
-    if (string.IsNullOrEmpty(request?.Username))
+    Guid userId = Guid.TryParse(request?.UserId, out Guid id) ? id : Guid.Empty;
+    if (string.IsNullOrEmpty(request?.UserId) && userId == Guid.Empty)
     {
-      return BadRequest(new { error = "Username is required" });
+      return BadRequest(new { error = "UserId is required" });
     }
 
-    string username = request.Username;
+    // Get the template ID and username from the request
+    string templateId = request?.TemplateId ?? "default";
+    string username = request?.Username ?? userId.ToString();
 
     // Immediately return a response
     Task.Run(async () =>
@@ -36,16 +41,21 @@ public class DocumentGeneratorController : ControllerBase
       await Task.Delay(10000);
 
       // Get the connection IDs for the target user
-      var connectionIds = NotificationHub.GetConnectionIdsForUser(username);
+      var connectionIds = NotificationHub.GetConnectionIdsForUser(userId.ToString());
 
       // Send the notification directly to the user's connections
       if (connectionIds.Any())
       {
+        // Send a structured notification with template ID clearly identified
         await _hubContext.Clients.Clients(connectionIds).SendAsync("ReceiveNotification",
-          username, $"Hello {username}, your document has been generated!");
+          username, $"TEMPLATE_ID:{templateId}|Document generated successfully");
       }
     });
 
-    return Ok(new { status = "Started", message = $"Document is generating for user {username}..." });
+    return Ok(new {
+      status = "Started",
+      message = $"Document is generating for user {userId} with template {templateId}...",
+      templateId = templateId
+    });
   }
 }
