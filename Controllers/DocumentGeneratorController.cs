@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using System.Linq;
-using System.Threading.Tasks;
+using SignalRNotificationAPI.WebSockets;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -19,6 +18,7 @@ public class DocumentGeneratorController : ControllerBase
     public string UserId { get; set; }
     public string TemplateId { get; set; }
     public string Username { get; set; }
+    public string ConnectionType { get; set; } = "SignalR"; // Default to SignalR, can be "WebSocket"
   }
 
   [HttpPost("generate")]
@@ -33,6 +33,7 @@ public class DocumentGeneratorController : ControllerBase
     // Get the template ID and username from the request
     string templateId = request?.TemplateId ?? "default";
     string username = request?.Username ?? userId.ToString();
+    string connectionType = request?.ConnectionType ?? "SignalR";
 
     // Immediately return a response
     Task.Run(async () =>
@@ -40,22 +41,32 @@ public class DocumentGeneratorController : ControllerBase
       // Simulate document generation delay (10 seconds as specified)
       await Task.Delay(10000);
 
-      // Get the connection IDs for the target user
-      var connectionIds = NotificationHub.GetConnectionIdsForUser(userId.ToString());
+      // Format the notification message
+      string message = $"TEMPLATE_ID:{templateId}|Document generated successfully";
 
-      // Send the notification directly to the user's connections
-      if (connectionIds.Any())
+      // Send notification based on connection type
+      if (connectionType.Equals("WebSocket", StringComparison.OrdinalIgnoreCase))
       {
-        // Send a structured notification with template ID clearly identified
-        await _hubContext.Clients.Clients(connectionIds).SendAsync("ReceiveNotification",
-          username, $"TEMPLATE_ID:{templateId}|Document generated successfully");
+        // Send via WebSocket
+        await WebSocketHandler.SendMessageAsync(userId.ToString(), message);
+      }
+      else
+      {
+        // Send via SignalR (default)
+        var connectionIds = NotificationHub.GetConnectionIdsForUser(userId.ToString());
+        if (connectionIds.Any())
+        {
+          await _hubContext.Clients.Clients(connectionIds).SendAsync("ReceiveNotification",
+            username, message);
+        }
       }
     });
 
     return Ok(new {
       status = "Started",
       message = $"Document is generating for user {userId} with template {templateId}...",
-      templateId = templateId
+      templateId = templateId,
+      connectionType = connectionType
     });
   }
 }

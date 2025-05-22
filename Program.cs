@@ -1,3 +1,6 @@
+using System.Net.WebSockets;
+using SignalRNotificationAPI.WebSockets;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -32,6 +35,35 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting(); // Required for SignalR
 app.UseAuthorization();
+
+// Configure WebSockets
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromMinutes(2),
+    ReceiveBufferSize = 4 * 1024 // 4KB
+});
+
+// WebSocket middleware
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/ws")
+    {
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            string userId = context.Request.Query["userId"];
+            WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            await WebSocketHandler.OnConnected(webSocket, userId);
+        }
+        else
+        {
+            context.Response.StatusCode = 400;
+        }
+    }
+    else
+    {
+        await next();
+    }
+});
 
 // Map Hub
 app.MapHub<NotificationHub>("/Hubs/NotificationHub"); // Add leading slash
