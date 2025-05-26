@@ -12,6 +12,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+
 // Configure Entity Framework
 builder.Services.AddDbContext<SignalRDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -47,8 +51,18 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Apply database migrations on startup (for POC deployment)
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<SignalRDbContext>();
+    context.Database.Migrate();
+}
+
 // Apply CORS before everything else
 app.UseCors("AllowAngularApp");
+
+// Map health check endpoint
+app.MapHealthChecks("/health");
 
 // Swagger (optional)
 if (app.Environment.IsDevelopment())

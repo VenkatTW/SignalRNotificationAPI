@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  signalr-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=tcp:signalrspike.database.windows.net,1433;Initial Catalog=SignalRPOC;Persist Security Info=False;User ID=admin_poc;Password=Welcome@123;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+      - ConnectionStrings__SignalRBackplane=Server=tcp:signalrspike.database.windows.net,1433;Initial Catalog=SignalRPOC;Persist Security Info=False;User ID=admin_poc;Password=Welcome@123;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+      - CorsSettings__AngularAppUrl=http://localhost:4200
