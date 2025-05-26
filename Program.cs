@@ -1,5 +1,9 @@
 using System.Net.WebSockets;
 using SignalRNotificationAPI.WebSockets;
+using SignalRNotificationAPI.Data;
+using SignalRNotificationAPI.Services;
+using SignalRNotificationAPI.Hubs;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,13 +11,34 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR();
+
+// Configure Entity Framework
+builder.Services.AddDbContext<SignalRDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configure SignalR
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
+    options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+});
+
+// Register custom services - Use a single instance for both interfaces
+builder.Services.AddScoped<SqlServerConnectionManager>();
+builder.Services.AddScoped<IConnectionManager>(provider => provider.GetRequiredService<SqlServerConnectionManager>());
+builder.Services.AddScoped<IMessagePersistenceService>(provider => provider.GetRequiredService<SqlServerConnectionManager>());
+
+// Register background services
+builder.Services.AddHostedService<SignalRCleanupService>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularApp", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        var angularAppUrl = builder.Configuration["CorsSettings:AngularAppUrl"];
+        policy.WithOrigins(angularAppUrl)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
