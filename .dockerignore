@@ -12,6 +12,7 @@
 *.userosscache
 *.sln.docstates
 
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -35,7 +36,10 @@ bld/
 
 # Git files
 .git/
+.git/**
 .gitignore
+.git
+.git/fsmonitor--daemon.ipc
 .gitattributes
 
 # Documentation

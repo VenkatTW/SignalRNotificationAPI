@@ -10,6 +10,11 @@
 *.userosscache
 *.sln.docstates
 
+.git/fsmonitor--daemon.ipc
+.git
+.gitignore
+.gitattributes
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
